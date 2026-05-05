@@ -1,5 +1,5 @@
 """
-merge_pdfs.py — Merge all PDFs in a folder into a single output file.
+merge_pdfs.py - Merge all PDFs in a folder into a single output file.
 
 Usage:
     python merge_pdfs.py                        # merges PDFs in current folder
