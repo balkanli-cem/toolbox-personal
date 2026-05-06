@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IaC Reviewer</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0d0f14;
+      color: #c9d1e8;
+    }
+
+    h1 { color: #a78bfa; margin-bottom: 8px; }
+    p.subtitle { color: #5a6282; margin-bottom: 24px; }
+
+    label { display: block; margin-bottom: 6px; color: #8892b0; font-size: 13px; }
+
+    textarea {
+      width: 100%;
+      height: 260px;
+      background: #13161e;
+      border: 1px solid #252a38;
+      border-radius: 6px;
+      color: #c9d1e8;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 12px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin: 12px 0;
+      align-items: center;
+    }
+
+    select {
+      background: #13161e;
+      border: 1px solid #252a38;
+      border-radius: 6px;
+      color: #c9d1e8;
+      font-family: monospace;
+      padding: 8px 12px;
+    }
+
+    button {
+      background: #7c6af7;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-family: monospace;
+      font-size: 14px;
+      font-weight: bold;
+      padding: 10px 24px;
+      cursor: pointer;
+    }
+
+    button:hover { background: #9b85f8; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #output { margin-top: 28px; }
+
+    .score-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .score-value { font-size: 28px; font-weight: bold; }
+
+    .score-bar {
+      flex: 1;
+      height: 6px;
+      background: #252a38;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.8s ease;
+    }
+
+    .summary {
+      color: #8892b0;
+      font-size: 13px;
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+
+    .finding {
+      border: 1px solid #252a38;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .finding-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    .finding-header:hover { background: #13161e; }
+
+    .badge {
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 3px;
+      letter-spacing: 1px;
+    }
+
+    .badge-critical { background: rgba(248,113,113,0.15); color: #f87171; }
+    .badge-warning  { background: rgba(251,191,36,0.1);  color: #fbbf24; }
+    .badge-info     { background: rgba(96,165,250,0.1);  color: #60a5fa; }
+    .badge-good     { background: rgba(74,222,128,0.1);  color: #4ade80; }
+
+    .finding-title { flex: 1; font-size: 13px; }
+    .finding-category { font-size: 11px; color: #5a6282; }
+
+    .finding-body {
+      display: none;
+      padding: 12px 14px;
+      border-top: 1px solid #252a38;
+      font-size: 12px;
+      line-height: 1.8;
+      color: #8892b0;
+    }
+
+    .finding-body.open { display: block; }
+
+    .fix {
+      margin-top: 10px;
+      background: #13161e;
+      border: 1px solid #252a38;
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: #4ade80;
+      font-size: 12px;
+    }
+
+    .fix-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #5a6282;
+      margin-bottom: 5px;
+    }
+
+    .error { color: #f87171; margin-top: 16px; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <h1>⬡ IaC Reviewer</h1>
+  <p class="subtitle">Paste your Terraform, Bicep, or ARM code for an AI-powered review.</p>
+
+  <label>Your code</label>
+  <textarea id="code" placeholder="# Paste your Terraform or Bicep code here..."></textarea>
+
+  <div class="controls">
+    <select id="cloud">
+      <option value="azure">Azure</option>
+      <option value="aws">AWS</option>
+      <option value="gcp">GCP</option>
+    </select>
+    <select id="focus">
+      <option value="all">All checks</option>
+      <option value="security">Security</option>
+      <option value="naming">Naming</option>
+      <option value="modularity">Modularity</option>
+      <option value="cost">Cost</option>
+    </select>
+    <button id="btn" onclick="runReview()">▶ Run Review</button>
+  </div>
+
+  <div id="output"></div>
+
+  <script>
+    function toggle(el) {
+      const body = el.nextElementSibling;
+      body.classList.toggle("open");
+    }
+
+    async function runReview() {
+      const code = document.getElementById("code").value.trim();
+      if (!code) return;
+
+      const btn = document.getElementById("btn");
+      btn.disabled = true;
+      btn.textContent = "Reviewing...";
+      document.getElementById("output").innerHTML = "";
+
+      try {
+        const response = await fetch("/review", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            code: code,
+            cloud: document.getElementById("cloud").value,
+            focus: document.getElementById("focus").value
+          })
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.detail);
+        }
+
+        const data = await response.json();
+        renderResult(data);
+
+      } catch (err) {
+        document.getElementById("output").innerHTML =
+          `<div class="error">Error: ${err.message}</div>`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = "▶ Run Review";
+    }
+
+    function renderResult(data) {
+      const score = data.score;
+      const color = score >= 80 ? "#4ade80" : score >= 60 ? "#fbbf24" : "#f87171";
+
+      const findingsHTML = data.findings.map(f => `
+        <div class="finding">
+          <div class="finding-header" onclick="toggle(this)">
+            <span class="badge badge-${f.severity}">${f.severity}</span>
+            <span class="finding-title">${f.title}</span>
+            <span class="finding-category">${f.category}</span>
+          </div>
+          <div class="finding-body">
+            ${f.description}
+            <div class="fix">
+              <div class="fix-label">Suggested fix</div>
+              ${f.fix}
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      document.getElementById("output").innerHTML = `
+        <div class="score-row">
+          <span class="score-value" style="color:${color}">${score}</span>
+          <div class="score-bar">
+            <div class="score-fill" style="width:0%;background:${color}" id="fill"></div>
+          </div>
+        </div>
+        <div class="summary">${data.summary}</div>
+        ${findingsHTML}
+      `;
+
+      setTimeout(() => {
+        document.getElementById("fill").style.width = score + "%";
+      }, 50);
+    }
+  </script>
+
+</body>
+</html>
