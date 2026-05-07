@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Writing Assistant</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 860px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0d0f14;
+      color: #c9d1e8;
+    }
+
+    h1 { color: #a78bfa; margin-bottom: 6px; }
+    p.subtitle { color: #5a6282; margin-bottom: 28px; }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    h2 {
+      font-size: 15px;
+      color: #8892b0;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #252a38;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #8892b0;
+      font-size: 13px;
+    }
+
+    textarea, input, select {
+      width: 100%;
+      background: #13161e;
+      border: 1px solid #252a38;
+      border-radius: 6px;
+      color: #c9d1e8;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 10px 12px;
+      box-sizing: border-box;
+      margin-bottom: 16px;
+    }
+
+    textarea { resize: vertical; }
+
+    button {
+      background: #7c6af7;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 10px 22px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+
+    button:hover { background: #9b85f8; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    button.secondary {
+      background: transparent;
+      border: 1px solid #252a38;
+      color: #8892b0;
+    }
+
+    button.secondary:hover { border-color: #a78bfa; color: #a78bfa; }
+
+    .sample-block {
+      position: relative;
+      margin-bottom: 12px;
+    }
+
+    .remove-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: transparent;
+      border: none;
+      color: #5a6282;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0 6px;
+      margin: 0;
+    }
+
+    .remove-btn:hover { color: #f87171; background: transparent; }
+
+    .profile-card {
+      background: #13161e;
+      border: 1px solid #252a38;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      font-size: 12px;
+      line-height: 1.8;
+      color: #8892b0;
+    }
+
+    .profile-card .profile-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #a78bfa;
+      margin-bottom: 4px;
+    }
+
+    .profile-field { margin-bottom: 10px; }
+
+    .output-box {
+      background: #13161e;
+      border: 1px solid #252a38;
+      border-radius: 8px;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.8;
+      color: #c9d1e8;
+      white-space: pre-wrap;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .output-box.visible { display: block; }
+
+    .subject-line {
+      font-size: 11px;
+      color: #a78bfa;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .copy-btn {
+      display: block;
+      margin-top: 12px;
+      background: transparent;
+      border: 1px solid #252a38;
+      color: #8892b0;
+      font-size: 11px;
+      padding: 6px 14px;
+    }
+
+    .copy-btn:hover { border-color: #4ade80; color: #4ade80; }
+
+    .error { color: #f87171; font-size: 13px; margin-top: 12px; }
+    .success { color: #4ade80; font-size: 13px; margin-top: 12px; }
+
+    .controls-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .controls-row > div { flex: 1; }
+  </style>
+</head>
+<body>
+
+  <h1>✍ Writing Assistant</h1>
+  <p class="subtitle">Writes in your voice. Learns from your examples.</p>
+
+  <!-- SCREEN 1: Training -->
+  <div id="screen-train" class="screen">
+    <h2>Step 1 — Teach it your style</h2>
+    <p style="color:#5a6282;font-size:13px;margin-bottom:20px;">
+      Paste 2-3 examples of your own writing — LinkedIn posts, emails, anything you've written.
+      The more examples, the better the style match.
+    </p>
+
+    <div id="samples-container">
+      <div class="sample-block">
+        <label>Sample 1</label>
+        <textarea rows="6" placeholder="Paste a LinkedIn post or email you've written..."></textarea>
+      </div>
+    </div>
+
+    <button class="secondary" onclick="addSample()">+ Add another sample</button>
+    <br><br>
+    <button id="train-btn" onclick="trainStyle()">▶ Analyze my style</button>
+    <div id="train-msg"></div>
+  </div>
+
+  <!-- SCREEN 2: Generate -->
+  <div id="screen-generate" class="screen">
+    <h2>Your style profile</h2>
+    <div id="profile-card" class="profile-card"></div>
+
+    <button class="secondary" onclick="showTrainScreen()">↺ Retrain style</button>
+    <br><br>
+
+    <h2 style="margin-top:24px;">Generate content</h2>
+
+    <div class="controls-row">
+      <div>
+        <label>Content type</label>
+        <select id="content-type" onchange="toggleSubject()">
+          <option value="linkedin_post">LinkedIn post</option>
+          <option value="email">Professional email</option>
+        </select>
+      </div>
+      <div>
+        <label>Extra instructions (optional)</label>
+        <input type="text" id="extra" placeholder="e.g. keep it under 150 words, make it punchy">
+      </div>
+    </div>
+
+    <label>What do you want to write about?</label>
+    <textarea id="topic" rows="4" placeholder="e.g. I just passed my AZ-305 exam after months of preparation. I want to share what made the difference this time compared to my first attempt."></textarea>
+
+    <button id="gen-btn" onclick="generateContent()">▶ Generate draft</button>
+    <div id="gen-msg"></div>
+
+    <div id="output-box" class="output-box">
+      <div id="subject-line" class="subject-line"></div>
+      <div id="draft-content"></div>
+      <button class="copy-btn" onclick="copyDraft()">Copy to clipboard</button>
+    </div>
+  </div>
+
+  <script>
+    let sampleCount = 1;
+
+    async function init() {
+      const res = await fetch("/profile");
+      const data = await res.json();
+      if (data.exists) {
+        renderProfile(data.profile);
+        showScreen("generate");
+      } else {
+        showScreen("train");
+      }
+    }
+
+    function showScreen(name) {
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      document.getElementById("screen-" + name).classList.add("active");
+    }
+
+    function showTrainScreen() {
+      showScreen("train");
+    }
+
+    function addSample() {
+      sampleCount++;
+      const container = document.getElementById("samples-container");
+      const block = document.createElement("div");
+      block.className = "sample-block";
+      block.innerHTML = `
+        <label>Sample ${sampleCount}</label>
+        <button class="remove-btn" onclick="removeSample(this)">✕</button>
+        <textarea rows="6" placeholder="Paste another writing sample..."></textarea>
+      `;
+      container.appendChild(block);
+    }
+
+    function removeSample(btn) {
+      btn.parentElement.remove();
+    }
+
+    async function trainStyle() {
+      const textareas = document.querySelectorAll("#samples-container textarea");
+      const samples = Array.from(textareas)
+        .map(t => t.value.trim())
+        .filter(s => s.length > 0);
+
+      if (samples.length === 0) {
+        document.getElementById("train-msg").innerHTML =
+          '<div class="error">Please paste at least one writing sample.</div>';
+        return;
+      }
+
+      const btn = document.getElementById("train-btn");
+      btn.disabled = true;
+      btn.textContent = "Analyzing...";
+      document.getElementById("train-msg").innerHTML = "";
+
+      try {
+        const res = await fetch("/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ samples })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail);
+        }
+
+        const data = await res.json();
+        renderProfile(data.profile);
+        showScreen("generate");
+
+      } catch (err) {
+        document.getElementById("train-msg").innerHTML =
+          `<div class="error">Error: ${err.message}</div>`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = "▶ Analyze my style";
+    }
+
+    function renderProfile(profile) {
+      document.getElementById("profile-card").innerHTML = `
+        <div class="profile-field">
+          <div class="profile-label">Personality</div>
+          ${profile.personality}
+        </div>
+        <div class="profile-field">
+          <div class="profile-label">Structure</div>
+          ${profile.structure}
+        </div>
+        <div class="profile-field">
+          <div class="profile-label">Language</div>
+          ${profile.language}
+        </div>
+        <div class="profile-field">
+          <div class="profile-label">Narrative style</div>
+          ${profile.narrative_style}
+        </div>
+      `;
+    }
+
+    function toggleSubject() {
+      const type = document.getElementById("content-type").value;
+      document.getElementById("subject-line").style.display =
+        type === "email" ? "block" : "none";
+    }
+
+    async function generateContent() {
+      const topic = document.getElementById("topic").value.trim();
+      if (!topic) return;
+
+      const btn = document.getElementById("gen-btn");
+      btn.disabled = true;
+      btn.textContent = "Writing...";
+      document.getElementById("gen-msg").innerHTML = "";
+      document.getElementById("output-box").classList.remove("visible");
+
+      try {
+        const res = await fetch("/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content_type: document.getElementById("content-type").value,
+            topic: topic,
+            extra_instructions: document.getElementById("extra").value.trim() || null
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail);
+        }
+
+        const data = await res.json();
+
+        if (data.subject) {
+          document.getElementById("subject-line").textContent = "Subject: " + data.subject;
+          document.getElementById("subject-line").style.display = "block";
+        } else {
+          document.getElementById("subject-line").style.display = "none";
+        }
+
+        document.getElementById("draft-content").textContent = data.draft;
+        document.getElementById("output-box").classList.add("visible");
+
+      } catch (err) {
+        document.getElementById("gen-msg").innerHTML =
+          `<div class="error">Error: ${err.message}</div>`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = "▶ Generate draft";
+    }
+
+    function copyDraft() {
+      const text = document.getElementById("draft-content").textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector(".copy-btn");
+        btn.textContent = "Copied!";
+        setTimeout(() => btn.textContent = "Copy to clipboard", 2000);
+      });
+    }
+
+    init();
+  </script>
+
+</body>
+</html>
