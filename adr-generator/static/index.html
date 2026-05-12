@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADR Generator</title>
+  <style>
+    body {
+      font-family: monospace;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 20px;
+      background: #0d0f14;
+      color: #c9d1e8;
+    }
+
+    h1 { color: #a78bfa; margin-bottom: 6px; }
+    p.subtitle { color: #5a6282; margin-bottom: 28px; }
+
+    h2 {
+      font-size: 14px;
+      color: #8892b0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 28px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #252a38;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #8892b0;
+      font-size: 12px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      background: #13161e;
+      border: 1px solid #252a38;
+      border-radius: 6px;
+      color: #c9d1e8;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 10px 12px;
+      box-sizing: border-box;
+      margin-bottom: 16px;
+    }
+
+    textarea { resize: vertical; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .option-block {
+      background: #13161e;
+      border: 1px solid #252a38;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+
+    .option-block input { margin-bottom: 8px; }
+    .option-block textarea { margin-bottom: 0; }
+
+    .remove-btn {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: transparent;
+      border: none;
+      color: #5a6282;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .remove-btn:hover { color: #f87171; }
+
+    button {
+      background: #7c6af7;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: bold;
+      padding: 10px 22px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+
+    button:hover { background: #9b85f8; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    button.secondary {
+      background: transparent;
+      border: 1px solid #252a38;
+      color: #8892b0;
+    }
+
+    button.secondary:hover { border-color: #a78bfa; color: #a78bfa; }
+
+    .output-section {
+      display: none;
+      margin-top: 32px;
+    }
+
+    .output-section.visible { display: block; }
+
+    .markdown-preview {
+      background: #13161e;
+      border: 1px solid #252a38;
+      border-radius: 8px;
+      padding: 24px;
+      font-size: 13px;
+      line-height: 1.8;
+      color: #c9d1e8;
+      white-space: pre-wrap;
+    }
+
+    .output-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .error { color: #f87171; font-size: 13px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+
+  <h1>◈ ADR Generator</h1>
+  <p class="subtitle">Turn your architecture decisions into professional documentation.</p>
+
+  <h2>Decision details</h2>
+
+  <div class="row">
+    <div>
+      <label>Title</label>
+      <input type="text" id="title" placeholder="e.g. Container Apps vs AKS for microservices workload">
+    </div>
+    <div>
+      <label>Status</label>
+      <select id="status">
+        <option value="Proposed">Proposed</option>
+        <option value="Accepted">Accepted</option>
+        <option value="Deprecated">Deprecated</option>
+      </select>
+    </div>
+  </div>
+
+  <label>Context</label>
+  <textarea id="context" rows="4"
+    placeholder="Why does this decision need to be made? What constraints or requirements are driving it?"></textarea>
+
+  <h2>Options considered</h2>
+  <div id="options-container">
+    <div class="option-block">
+      <label>Option name</label>
+      <input type="text" placeholder="e.g. Azure Container Apps">
+      <label>Description</label>
+      <textarea rows="2" placeholder="Brief description of this option..."></textarea>
+    </div>
+  </div>
+
+  <button class="secondary" onclick="addOption()">+ Add option</button>
+
+  <h2>Decision</h2>
+  <textarea id="decision" rows="3"
+    placeholder="What did you decide and what was the main reason?"></textarea>
+
+  <label>Extra instructions (optional)</label>
+  <input type="text" id="extra"
+    placeholder="e.g. focus on cost implications, audience is non-technical stakeholders">
+
+  <br>
+  <button id="gen-btn" onclick="generateADR()">▶ Generate ADR</button>
+  <div id="error-msg"></div>
+
+  <div id="output-section" class="output-section">
+    <h2>Generated ADR</h2>
+    <div id="markdown-preview" class="markdown-preview"></div>
+    <div class="output-actions">
+      <button class="secondary" onclick="copyMarkdown()">Copy markdown</button>
+      <button class="secondary" onclick="downloadMarkdown()">Download .md</button>
+    </div>
+  </div>
+
+  <script>
+    let optionCount = 1;
+    let lastResult = null;
+
+    function addOption() {
+      optionCount++;
+      const container = document.getElementById("options-container");
+      const block = document.createElement("div");
+      block.className = "option-block";
+      block.innerHTML = `
+        <button class="remove-btn" onclick="removeOption(this)">✕</button>
+        <label>Option name</label>
+        <input type="text" placeholder="e.g. Azure Kubernetes Service">
+        <label>Description</label>
+        <textarea rows="2" placeholder="Brief description of this option..."></textarea>
+      `;
+      container.appendChild(block);
+    }
+
+    function removeOption(btn) {
+      btn.parentElement.remove();
+    }
+
+    function collectOptions() {
+      const blocks = document.querySelectorAll(".option-block");
+      const options = [];
+      blocks.forEach(block => {
+        const inputs = block.querySelectorAll("input");
+        const textareas = block.querySelectorAll("textarea");
+        const name = inputs[0]?.value.trim();
+        const description = textareas[0]?.value.trim();
+        if (name && description) {
+          options.push({ name, description });
+        }
+      });
+      return options;
+    }
+
+    async function generateADR() {
+      const title = document.getElementById("title").value.trim();
+      const context = document.getElementById("context").value.trim();
+      const decision = document.getElementById("decision").value.trim();
+      const options = collectOptions();
+      const extra = document.getElementById("extra").value.trim();
+
+      if (!title || !context || !decision || options.length === 0) {
+        document.getElementById("error-msg").innerHTML =
+          '<div class="error">Please fill in title, context, decision, and at least one option.</div>';
+        return;
+      }
+
+      const btn = document.getElementById("gen-btn");
+      btn.disabled = true;
+      btn.textContent = "Generating...";
+      document.getElementById("error-msg").innerHTML = "";
+      document.getElementById("output-section").classList.remove("visible");
+
+      try {
+        const res = await fetch("/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            status: document.getElementById("status").value,
+            context,
+            options,
+            decision,
+            extra_instructions: extra || null
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail);
+        }
+
+        lastResult = await res.json();
+        document.getElementById("markdown-preview").textContent = lastResult.markdown;
+        document.getElementById("output-section").classList.add("visible");
+
+      } catch (err) {
+        document.getElementById("error-msg").innerHTML =
+          `<div class="error">Error: ${err.message}</div>`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = "▶ Generate ADR";
+    }
+
+    function copyMarkdown() {
+      if (!lastResult) return;
+      navigator.clipboard.writeText(lastResult.markdown).then(() => {
+        const btn = event.target;
+        btn.textContent = "Copied!";
+        setTimeout(() => btn.textContent = "Copy markdown", 2000);
+      });
+    }
+
+    function downloadMarkdown() {
+      if (!lastResult) return;
+      const filename = lastResult.title.toLowerCase().replace(/\s+/g, "-") + ".md";
+      const blob = new Blob([lastResult.markdown], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+
+</body>
+</html>
