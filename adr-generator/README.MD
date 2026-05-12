@@ -41,12 +41,12 @@ AI-powered Architecture Decision Record generator. Takes your raw architecture t
 ## Project structure
 
 adr-generator/
-─ main.py          # FastAPI routes
-─ generator.py     # Claude logic and markdown assembly
-─ models.py        # Pydantic request and response models
-─ requirements.txt
-─ static/
-    ─ index.html   # Frontend
+- main.py          # FastAPI routes
+- generator.py     # Claude logic and markdown assembly
+- models.py        # Pydantic request and response models
+- requirements.txt
+- static/
+   - index.html   # Frontend
 
 ## Stack
 
