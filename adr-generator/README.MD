@@ -50,9 +50,9 @@ adr-generator/
 
 ## Stack
 
-- **Backend** — Python, FastAPI, Uvicorn
-- **AI** — Anthropic Claude Sonnet via Python SDK
-- **Frontend** — Plain HTML, CSS, JavaScript
+- **Backend** - Python, FastAPI, Uvicorn
+- **AI** - Anthropic Claude Sonnet via Python SDK
+- **Frontend** - Plain HTML, CSS, JavaScript
 
 ## Notes
 
