@@ -36,7 +36,7 @@ AI-powered Architecture Decision Record generator. Takes your raw architecture t
 ```bash
    python -m uvicorn main:app --reload
 ```
-8. Open `http://localhost:8000`
+8. Open `http://localhost:8001`
 
 ## Project structure
 
