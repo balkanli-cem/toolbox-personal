@@ -17,7 +17,7 @@ def generate_adr(request: ADRRequest) -> ADRResponse:
 
     message = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=4096,
+        max_tokens=2048,
         system="""You are a senior solution architect helping document
 architecture decisions in a clear, professional format.
 You elaborate raw input into well-structured ADR documents.
